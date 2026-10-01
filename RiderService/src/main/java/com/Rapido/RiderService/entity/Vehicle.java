@@ -1,5 +1,6 @@
 package com.Rapido.RiderService.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,6 +12,7 @@ public class Vehicle {
 @GeneratedValue(strategy = GenerationType.AUTO)
 private int id;
 private String type;
+@Column(unique = true)
 private String vehicleno;
 private String name;
 private String model;
