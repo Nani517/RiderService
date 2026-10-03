@@ -3,6 +3,7 @@ package com.Rapido.RiderService.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.Rapido.RiderService.DTO.Cordinate;
@@ -10,7 +11,7 @@ import com.Rapido.RiderService.DTO.Cordinate;
 @Service
 public class RedisService {
 	@Autowired
-	private RedisTemplate<String, Object> redisTemplate;
+	private StringRedisTemplate redisTemplate;
 
 	public void saveRiderLocation(int riderId, String vehicleType, Cordinate coordinate) {
 		// making folder according to vehicle type
