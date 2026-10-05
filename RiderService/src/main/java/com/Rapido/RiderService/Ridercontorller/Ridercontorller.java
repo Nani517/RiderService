@@ -1,5 +1,7 @@
 package com.Rapido.RiderService.Ridercontorller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +20,8 @@ import com.Rapido.RiderService.DTO.VehicleDTO;
 import com.Rapido.RiderService.Service.RiderServicelayer;
 import com.Rapido.RiderService.entity.Rider;
 import com.Rapido.RiderService.entity.Vehicle;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 public class Ridercontorller {
@@ -53,5 +57,23 @@ public class Ridercontorller {
 	public void sendcordinate(@RequestParam int riderid, @RequestParam String vehicletype,@RequestBody Cordinate cordinate) {
 		riderServicelayer.SendCordinateLocation(riderid, vehicletype, cordinate);
 	}
+	@GetMapping("/rider/getallAssingedride")
+	public List<String> AssignedRide(@RequestParam int riderid,@RequestParam String vehicleType) {
+		return riderServicelayer.FindAllAssingedride(riderid,vehicleType);
+	}
+	@PostMapping("/rider/acceptingbooking")
+	public void Acceptbooking(@RequestParam int riderid ,@RequestParam int bookingid) {
+		riderServicelayer.acceptingBooking(riderid,bookingid);
+	}
+	
+	@GetMapping("/rider/movetowardspickup")
+	public void moveTowardsPickup(@RequestParam int bid, @RequestParam double latitude, @RequestParam double longtitude, HttpServletResponse resp) {
+		riderServicelayer.moveTowardsPickup(bid, latitude, longtitude, resp);
+	}
+	
+	
+	
+	
+	
 
 }

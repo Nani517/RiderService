@@ -1,8 +1,9 @@
 package com.Rapido.RiderService.Service;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisAccessor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,8 @@ import com.Rapido.RiderService.Repository.RiderRepository;
 import com.Rapido.RiderService.Repository.VehicleRepository;
 import com.Rapido.RiderService.entity.Rider;
 import com.Rapido.RiderService.entity.Vehicle;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Service
 public class RiderServicelayer {
@@ -107,6 +110,32 @@ public class RiderServicelayer {
 	public void SendCordinateLocation(int riderid, String vehicletype, Cordinate cordinate) {
 		// TODO Auto-generated method stub
 		redisService.saveRiderLocation(riderid, vehicletype, cordinate);
+	}
+
+	public List<String> FindAllAssingedride(int riderid,String vehicleType) {
+		// TODO Auto-generated method stub
+//		Rider rider = riderRepository.findById(riderid).orElseThrow(()->new RideNotFoundExecption());
+		return redisService.findNearbyCustomers(riderid,vehicleType);
+	}
+
+	public void acceptingBooking(int riderid, int bookingid) {
+		// TODO Auto-generated method stub
+		Rider rider = riderRepository.findById(riderid).orElseThrow(() -> new RideNotFoundExecption());
+	}
+
+	public void moveTowardsPickup(int bid, double lat, double longi, HttpServletResponse resp) {
+		// url =
+		// https://www.google.com/maps/dir/?api=1&destination=17.4401,78.3489&travelmode=driving
+
+		String url = "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + longi + "&travelmode=driving";
+
+		try {
+			resp.sendRedirect(url);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 }
