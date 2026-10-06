@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.Rapido.RiderService.DTO.AssignedRideDTO;
 import com.Rapido.RiderService.DTO.Cordinate;
 import com.Rapido.RiderService.DTO.CreateRiderAccount;
 import com.Rapido.RiderService.DTO.Responsestructure;
@@ -54,26 +55,24 @@ public class Ridercontorller {
 	}
 
 	@GetMapping("/rider/sendcordinatelocation")
-	public void sendcordinate(@RequestParam int riderid, @RequestParam String vehicletype,@RequestBody Cordinate cordinate) {
+	public void sendcordinate(@RequestParam int riderid, @RequestParam String vehicletype,
+			@RequestBody Cordinate cordinate) {
 		riderServicelayer.SendCordinateLocation(riderid, vehicletype, cordinate);
 	}
+
 	@GetMapping("/rider/getallAssingedride")
-	public List<String> AssignedRide(@RequestParam int riderid,@RequestParam String vehicleType) {
-		return riderServicelayer.FindAllAssingedride(riderid,vehicleType);
+	public List<AssignedRideDTO> AssignedRide(@RequestParam int riderid) {
+		return riderServicelayer.FindAllAssingedride(riderid);
 	}
+
 	@PostMapping("/rider/acceptingbooking")
-	public void Acceptbooking(@RequestParam int riderid ,@RequestParam int bookingid) {
-		riderServicelayer.acceptingBooking(riderid,bookingid);
+	public Responsestructure<String> Acceptbooking(@RequestParam int riderid, @RequestParam int bookingid) {
+		return riderServicelayer.acceptingBooking(bookingid, riderid);
 	}
-	
-	@GetMapping("/rider/movetowardspickup")
-	public void moveTowardsPickup(@RequestParam int bid, @RequestParam double latitude, @RequestParam double longtitude, HttpServletResponse resp) {
-		riderServicelayer.moveTowardsPickup(bid, latitude, longtitude, resp);
+
+	@GetMapping("/ride/movetowardspickuplocation")
+	public void movingtopicpuploocation(@RequestParam int bookingid) {
+		riderServicelayer.ridermovingtopicpuplocation(bookingid);
 	}
-	
-	
-	
-	
-	
 
 }

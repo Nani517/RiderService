@@ -1,15 +1,27 @@
 package com.Rapido.RiderService.Service;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
+import com.Rapido.RiderService.DTO.AssignedRideDTO;
+import com.Rapido.RiderService.DTO.BookingDTO;
 import com.Rapido.RiderService.DTO.Cordinate;
 import com.Rapido.RiderService.DTO.CreateRiderAccount;
 import com.Rapido.RiderService.DTO.Responsestructure;
+import com.Rapido.RiderService.DTO.RideDetails;
 import com.Rapido.RiderService.DTO.VehicleDTO;
 import com.Rapido.RiderService.Execption.RideNotFoundExecption;
 import com.Rapido.RiderService.Execption.RidealreadyExistExecption;
@@ -26,6 +38,12 @@ public class RiderServicelayer {
 	private RiderRepository riderRepository;
 	@Autowired
 	private VehicleRepository vehicleRepository;
+	@Autowired
+	private RestTemplate restTemplate;
+	@Autowired
+	private RedisService redisService;
+	@Autowired
+	private RedisTemplate<String, Object> redisTemplate;
 
 	public Responsestructure<Rider> CreateAccountOfRider(CreateRiderAccount cra) {
 		// TODO Auto-generated method stub
@@ -104,37 +122,70 @@ public class RiderServicelayer {
 		return responsestructure;
 	}
 
-	@Autowired
-	private RedisService redisService;
-
 	public void SendCordinateLocation(int riderid, String vehicletype, Cordinate cordinate) {
 		// TODO Auto-generated method stub
-		redisService.saveRiderLocation(riderid, vehicletype, cordinate);
+		Rider rider = riderRepository.findById(riderid).orElseThrow(()->new RideNotFoundExecption());
+		vehicletype = rider.getVehicle().getType();
+		redisService.saveRiderLocation(rider.getId(), vehicletype, cordinate);
 	}
 
-	public List<String> FindAllAssingedride(int riderid,String vehicleType) {
+	public List<AssignedRideDTO> FindAllAssingedride(int riderid) {
 		// TODO Auto-generated method stub
 //		Rider rider = riderRepository.findById(riderid).orElseThrow(()->new RideNotFoundExecption());
-		return redisService.findNearbyCustomers(riderid,vehicleType);
+		return redisService.getAllAssignedRides(riderid);
 	}
 
-	public void acceptingBooking(int riderid, int bookingid) {
-		// TODO Auto-generated method stub
-		Rider rider = riderRepository.findById(riderid).orElseThrow(() -> new RideNotFoundExecption());
+	public BookingDTO findBookingById(int bookingId) {
+		String url = "http://localhost:8081/customer/booking/" + bookingId;
+		return restTemplate.getForObject(url, BookingDTO.class);
 	}
 
-	public void moveTowardsPickup(int bid, double lat, double longi, HttpServletResponse resp) {
-		// url =
-		// https://www.google.com/maps/dir/?api=1&destination=17.4401,78.3489&travelmode=driving
-
-		String url = "https://www.google.com/maps/dir/?api=1&destination=" + lat + "," + longi + "&travelmode=driving";
-
-		try {
-			resp.sendRedirect(url);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public Responsestructure<String> acceptingBooking(int bookingId, int riderId) {
+		// 1. Check whether ride is assigned to rider
+		boolean assigned = redisService.isRideAssigned(riderId, bookingId);
+		System.out.println("Ride assigned = " + assigned);
+		if (!assigned) {
+			Responsestructure<String> response = new Responsestructure<>();
+			response.setStatuscode(HttpStatus.NOT_FOUND.value());
+			response.setMessage("Booking " + bookingId + " is not assigned to rider " + riderId);
+			response.setData(null);
+			return response;
 		}
+		// 2. CustomerService URL
+		String url = "http://localhost:8081/customer/booking/" + bookingId + "/assignRider/" + riderId;
+		System.out.println("CustomerService URL = " + url);
+		HttpHeaders headers = new HttpHeaders();
+		HttpEntity<Void> request = new HttpEntity<>(headers);
+		
+			// 3. Call CustomerService
+			ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+			System.out.println("CustomerService HTTP Status = " + response.getStatusCode());
+			System.out.println("CustomerService Response = " + response.getBody());
+			// 4. Make sure CustomerService responded
+			if (response.getBody() == null) {
+				Responsestructure<String> error = new Responsestructure<>();
+				error.setStatuscode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+				error.setMessage("Empty response from CustomerService");
+				error.setData(null);
+				return error;
+			}
+//			Rider rider = riderRepository.findById(riderId).orElseThrow(()-> new RideNotFoundExecption());
+//			rider.setStatus("Busy");
+			// 5. Update Redis after successful DB update
+			redisService.acceptRide(riderId, bookingId);
+			// 6. Remove booking from pending requests
+			redisService.removeAssignedRide(riderId, bookingId);
+			// 7. Return success
+			Responsestructure<String> result = new Responsestructure<>();
+			result.setStatuscode(HttpStatus.OK.value());
+			result.setMessage("Booking accepted successfully");
+			result.setData("Booking " + bookingId + " accepted by rider " + riderId);
+			return result;
+		
+	}
+
+	public void ridermovingtopicpuplocation(int bookingid) {
+		// TODO Auto-generated method stub
 
 	}
 
