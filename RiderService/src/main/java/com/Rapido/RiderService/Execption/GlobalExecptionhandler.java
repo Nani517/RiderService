@@ -1,5 +1,7 @@
 package com.Rapido.RiderService.Execption;
 
+import java.io.IOException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -27,25 +29,19 @@ public class GlobalExecptionhandler {
 	}
 	@ExceptionHandler(RestClientException.class)
 	public Responsestructure<String> handlerestclientexcetion(RestClientException e){
-		// IMPORTANT: print actual error
-		System.out.println("========== REST TEMPLATE ERROR ==========");
-
-		System.out.println("Exception Type = " + e.getClass().getName());
-
-		System.out.println("Exception Message = " + e.getMessage());
-
-		e.printStackTrace();
-
-		System.out.println("==========================================");
-
+		
 		Responsestructure<String> error = new Responsestructure<>();
-
 		error.setStatuscode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-
 		error.setMessage("Error calling CustomerService: " + e.getMessage());
-
 		error.setData(null);
-
+		return error;
+	}
+	@ExceptionHandler(locationExecption.class)
+	public Responsestructure<String> handleException(){
+		Responsestructure<String> error = new Responsestructure<>();
+		error.setStatuscode(HttpStatus.NOT_FOUND.value());
+		error.setMessage("Give correct Coordinate");
+		error.setData(null);
 		return error;
 	}
 }

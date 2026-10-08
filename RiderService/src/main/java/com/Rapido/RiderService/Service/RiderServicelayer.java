@@ -1,6 +1,8 @@
 package com.Rapido.RiderService.Service;
 
 import java.io.IOException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,12 +27,16 @@ import com.Rapido.RiderService.DTO.RideDetails;
 import com.Rapido.RiderService.DTO.VehicleDTO;
 import com.Rapido.RiderService.Execption.RideNotFoundExecption;
 import com.Rapido.RiderService.Execption.RidealreadyExistExecption;
+import com.Rapido.RiderService.Execption.locationExecption;
 import com.Rapido.RiderService.Repository.RiderRepository;
 import com.Rapido.RiderService.Repository.VehicleRepository;
 import com.Rapido.RiderService.entity.Rider;
 import com.Rapido.RiderService.entity.Vehicle;
 
 import jakarta.servlet.http.HttpServletResponse;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class RiderServicelayer {
@@ -44,6 +50,8 @@ public class RiderServicelayer {
 	private RedisService redisService;
 	@Autowired
 	private RedisTemplate<String, Object> redisTemplate;
+	@Autowired
+	private ObjectMapper objectMapper;
 
 	public Responsestructure<Rider> CreateAccountOfRider(CreateRiderAccount cra) {
 		// TODO Auto-generated method stub
@@ -124,7 +132,7 @@ public class RiderServicelayer {
 
 	public void SendCordinateLocation(int riderid, String vehicletype, Cordinate cordinate) {
 		// TODO Auto-generated method stub
-		Rider rider = riderRepository.findById(riderid).orElseThrow(()->new RideNotFoundExecption());
+		Rider rider = riderRepository.findById(riderid).orElseThrow(() -> new RideNotFoundExecption());
 		vehicletype = rider.getVehicle().getType();
 		redisService.saveRiderLocation(rider.getId(), vehicletype, cordinate);
 	}
@@ -156,37 +164,130 @@ public class RiderServicelayer {
 		System.out.println("CustomerService URL = " + url);
 		HttpHeaders headers = new HttpHeaders();
 		HttpEntity<Void> request = new HttpEntity<>(headers);
-		
-			// 3. Call CustomerService
-			ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
-			System.out.println("CustomerService HTTP Status = " + response.getStatusCode());
-			System.out.println("CustomerService Response = " + response.getBody());
-			// 4. Make sure CustomerService responded
-			if (response.getBody() == null) {
-				Responsestructure<String> error = new Responsestructure<>();
-				error.setStatuscode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-				error.setMessage("Empty response from CustomerService");
-				error.setData(null);
-				return error;
-			}
+
+		// 3. Call CustomerService
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+		System.out.println("CustomerService HTTP Status = " + response.getStatusCode());
+		System.out.println("CustomerService Response = " + response.getBody());
+		// 4. Make sure CustomerService responded
+		if (response.getBody() == null) {
+			Responsestructure<String> error = new Responsestructure<>();
+			error.setStatuscode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			error.setMessage("Empty response from CustomerService");
+			error.setData(null);
+			return error;
+		}
 //			Rider rider = riderRepository.findById(riderId).orElseThrow(()-> new RideNotFoundExecption());
 //			rider.setStatus("Busy");
-			// 5. Update Redis after successful DB update
-			redisService.acceptRide(riderId, bookingId);
-			// 6. Remove booking from pending requests
-			redisService.removeAssignedRide(riderId, bookingId);
-			// 7. Return success
-			Responsestructure<String> result = new Responsestructure<>();
-			result.setStatuscode(HttpStatus.OK.value());
-			result.setMessage("Booking accepted successfully");
-			result.setData("Booking " + bookingId + " accepted by rider " + riderId);
-			return result;
-		
+		// 5. Update Redis after successful DB update
+		redisService.acceptRide(riderId, bookingId);
+		// 6. Remove booking from pending requests
+//			redisService.removeAssignedRide(riderId, bookingId);
+		// 7. Return success
+		Responsestructure<String> result = new Responsestructure<>();
+		result.setStatuscode(HttpStatus.OK.value());
+		result.setMessage("Booking accepted successfully");
+		result.setData("Booking " + bookingId + " accepted by rider " + riderId);
+		return result;
+
 	}
 
-	public void ridermovingtopicpuplocation(int bookingid) {
+	public String ridermovingtopicpuplocation(int bookingid) throws JacksonException {
+
+		// 1. Call CustomerService
+		String url = "http://localhost:8081/customer/returningBooking?bookingid=" + bookingid;
+
+		System.out.println("Calling CustomerService: " + url);
+
+		ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+		// 2. Get JSON response
+		String json = response.getBody();
+		System.out.println("Booking Response = " + json);
+		// 3. Convert JSON into JsonNode
+		JsonNode root = objectMapper.readTree(json);
+		// 4. Get pickup/source coordinates directly
+		JsonNode sourceCoordinate = root.get("sourceCordinate");
+		if (sourceCoordinate == null) {
+			new locationExecption();
+		}
+
+		// 5. Get latitude and longitude
+		double latitude = sourceCoordinate.get("latitude").asDouble();
+
+		double longitude = sourceCoordinate.get("longitude").asDouble();
+
+		System.out.println("Pickup Latitude = " + latitude);
+
+		System.out.println("Pickup Longitude = " + longitude);
+
+		// 6. Create Google Maps URL
+		String googleMapsUrl = "https://www.google.com/maps/dir/?api=1" + "&destination=" + latitude + "," + longitude
+				+ "&travelmode=driving";
+
+		System.out.println("Google Maps URL = " + googleMapsUrl);
+
+		return googleMapsUrl;
+	}
+
+	public Responsestructure<String> updatebookingStatus(int bookingid) {
+		String url = "http://localhost:8081/customer/booking/" + bookingid + "/status?status=RIDER_REACHED_PICKUP";
+		System.out.println("Calling CustomerService: " + url);
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, null, String.class);
+		System.out.println("CustomerService Status = " + response.getStatusCode());
+		System.out.println("CustomerService Response = " + response.getBody());
+		Responsestructure<String> responsestructure = new Responsestructure<String>();
+		responsestructure.setStatuscode(HttpStatus.ACCEPTED.value());
+		responsestructure.setMessage("rider is in pickup location");
+		responsestructure.setData("Booking Status is updated");
+		return responsestructure;
+	}
+
+	public String OTPverification(String otp, int bookingid) {
 		// TODO Auto-generated method stub
-
+		boolean verified = redisService.verifyOTP(bookingid, otp);
+		if (!verified) {
+			return "Invalid OTP";
+		}
+		System.out.println("OTP verified successfully");
+		return "OTP verified successfully";
+	}
+	public String movetowardsdroplocation(int bookingid) throws JacksonException {
+		// 1. Call CustomerService
+		String url = "http://localhost:8081/customer/returningBooking?bookingid=" + bookingid;
+		System.out.println("Calling CustomerService: " + url);
+		ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+		// 2. Get JSON response
+		String json = response.getBody();
+		System.out.println("Booking Response = " + json);
+		// 3. Convert JSON into JsonNode
+		JsonNode root = objectMapper.readTree(json);
+		// 4. Get pickup/source coordinates directly
+		JsonNode dropcordinate = root.get("desCordinate");
+		if (dropcordinate == null) {
+			new locationExecption();
+		}
+		// 5. Get latitude and longitude
+		double latitude = dropcordinate.get("latitude").asDouble();
+		double longitude = dropcordinate.get("longitude").asDouble();
+		System.out.println("Pickup Latitude = " + latitude);
+		System.out.println("Pickup Longitude = " + longitude);
+		// 6. Create Google Maps URL
+		String googleMapsUrl = "https://www.google.com/maps/dir/?api=1" + "&destination=" + latitude + "," + longitude
+				+ "&travelmode=driving";
+		System.out.println("Google Maps URL = " + googleMapsUrl);
+		return googleMapsUrl;
 	}
 
+	public void rideComplete(int bookingid) {
+		// TODO Auto-generated method stub
+		String url = "http://localhost:8081/customer/rideComplete?bookingid=" + bookingid;
+		System.out.println(url);
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, null, String.class);
+		String json = response.getBody();
+		System.out.println(json);
+		System.out.println("complete");
+	}
+
+	
+	
 }

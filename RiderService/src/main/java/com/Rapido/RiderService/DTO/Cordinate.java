@@ -1,21 +1,21 @@
 package com.Rapido.RiderService.DTO;
 
 public class Cordinate {
-	private double longtitude;
+	private double longitude;
 	private double latitude;
-	public Cordinate( double longtitude, double latitude) {
+	public Cordinate( double longitude, double latitude) {
 		super();
-		this.longtitude = longtitude;
+		this.longitude = longitude;
 		this.latitude = latitude;
 	}
 	public Cordinate() {
 		super();
 	}
 	public double getLongtitude() {
-		return longtitude;
+		return longitude;
 	}
 	public void setLongtitude(double longtitude) {
-		this.longtitude = longtitude;
+		this.longitude = longtitude;
 	}
 	public double getLatitude() {
 		return latitude;

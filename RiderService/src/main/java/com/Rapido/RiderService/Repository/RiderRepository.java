@@ -14,5 +14,6 @@ public interface RiderRepository extends JpaRepository<Rider, Integer>{
 
 
 	public boolean existsByEmail(String email);
+	
 
 }

@@ -125,4 +125,33 @@ public class RedisService {
 		return Boolean.TRUE.equals(bookingExists);
 	}
 
+//	public boolean verifyOTP(int bookingId, String enteredOtp) {
+//
+//	    String rideKey = "ride:" + bookingId;
+//
+//	    String storedOtp =
+//	            (String) redisTemplate.opsForHash()
+//	                    .get(rideKey, "otp");
+//
+//	    System.out.println("Ride Key = " + rideKey);
+//	    System.out.println("Stored OTP = " + storedOtp);
+//	    System.out.println("Entered OTP = " + enteredOtp);
+//
+//	    if (storedOtp == null) {
+//	        return false;
+//	    }
+//
+//	    return storedOtp.equals(enteredOtp);
+//	}
+	public boolean verifyOTP(int bookingId, String enteredOtp) {
+
+		String rideKey = "ride:" + bookingId;
+
+		String storedOtp = (String) redisTemplate.opsForHash().get(rideKey, "otp");
+
+		System.out.println("Stored OTP = " + storedOtp);
+		System.out.println("Entered OTP = " + enteredOtp);
+
+		return storedOtp != null && storedOtp.equals(enteredOtp);
+	}
 }

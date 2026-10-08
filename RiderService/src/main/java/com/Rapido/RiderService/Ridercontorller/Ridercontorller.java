@@ -1,5 +1,7 @@
 package com.Rapido.RiderService.Ridercontorller;
 
+import java.io.IOException;
+import java.net.http.HttpResponse;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,8 +73,25 @@ public class Ridercontorller {
 	}
 
 	@GetMapping("/ride/movetowardspickuplocation")
-	public void movingtopicpuploocation(@RequestParam int bookingid) {
-		riderServicelayer.ridermovingtopicpuplocation(bookingid);
+	public void movingtopicpuplocation(@RequestParam int bookingid,HttpServletResponse response) throws IOException{
+	    String googleMapsUrl = riderServicelayer.ridermovingtopicpuplocation(bookingid);
+	    response.sendRedirect(googleMapsUrl);
 	}
-
+	@PutMapping("/rider/updatebookingstatus")
+	public Responsestructure<String> updatingthebookingStatus(@RequestParam int bookingid) {
+		return riderServicelayer.updatebookingStatus(bookingid);
+	}
+	@GetMapping("/rider/otpverification")
+	public void optverify(@RequestParam String otp , @RequestParam int bookingid) {
+		riderServicelayer.OTPverification(otp,bookingid);
+	}
+	@GetMapping("/ride/movetowardsdroplocation")
+	public void movingtodroplocation(@RequestParam int bookingid ,HttpServletResponse response) throws IOException {
+		String googleMapUrl =riderServicelayer.movetowardsdroplocation(bookingid);
+		response.sendRedirect(googleMapUrl);
+	}
+	@PatchMapping("/rider/completeride")
+	public void rideCompleted(@RequestParam int booking) {
+		riderServicelayer.rideComplete(booking);
+	}
 }
