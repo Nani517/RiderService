@@ -19,6 +19,7 @@ import com.Rapido.RiderService.DTO.AssignedRideDTO;
 import com.Rapido.RiderService.DTO.Cordinate;
 import com.Rapido.RiderService.DTO.CreateRiderAccount;
 import com.Rapido.RiderService.DTO.Responsestructure;
+import com.Rapido.RiderService.DTO.RiderHistoryDTO;
 import com.Rapido.RiderService.DTO.VehicleDTO;
 import com.Rapido.RiderService.Service.RiderServicelayer;
 import com.Rapido.RiderService.entity.Rider;
@@ -91,7 +92,11 @@ public class Ridercontorller {
 		response.sendRedirect(googleMapUrl);
 	}
 	@PatchMapping("/rider/completeride")
-	public void rideCompleted(@RequestParam int booking) {
-		riderServicelayer.rideComplete(booking);
+	public Responsestructure<String> rideCompleted(@RequestParam int booking) {
+		return riderServicelayer.rideComplete(booking);
+	}
+	@GetMapping("/rider/riderhistory")
+	public List<RiderHistoryDTO> riderhistory(@RequestParam int riderid , @RequestParam String status) {
+		return riderServicelayer.riderHistory(riderid,status);
 	}
 }

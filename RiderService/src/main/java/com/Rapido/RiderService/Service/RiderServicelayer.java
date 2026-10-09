@@ -7,7 +7,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -24,9 +26,11 @@ import com.Rapido.RiderService.DTO.Cordinate;
 import com.Rapido.RiderService.DTO.CreateRiderAccount;
 import com.Rapido.RiderService.DTO.Responsestructure;
 import com.Rapido.RiderService.DTO.RideDetails;
+import com.Rapido.RiderService.DTO.RiderHistoryDTO;
 import com.Rapido.RiderService.DTO.VehicleDTO;
 import com.Rapido.RiderService.Execption.RideNotFoundExecption;
 import com.Rapido.RiderService.Execption.RidealreadyExistExecption;
+import com.Rapido.RiderService.Execption.RiderNotFoundException;
 import com.Rapido.RiderService.Execption.locationExecption;
 import com.Rapido.RiderService.Repository.RiderRepository;
 import com.Rapido.RiderService.Repository.VehicleRepository;
@@ -251,6 +255,7 @@ public class RiderServicelayer {
 		System.out.println("OTP verified successfully");
 		return "OTP verified successfully";
 	}
+
 	public String movetowardsdroplocation(int bookingid) throws JacksonException {
 		// 1. Call CustomerService
 		String url = "http://localhost:8081/customer/returningBooking?bookingid=" + bookingid;
@@ -278,16 +283,45 @@ public class RiderServicelayer {
 		return googleMapsUrl;
 	}
 
-	public void rideComplete(int bookingid) {
+	public Responsestructure<String> rideComplete(int bookingid) {
 		// TODO Auto-generated method stub
 		String url = "http://localhost:8081/customer/rideComplete?bookingid=" + bookingid;
 		System.out.println(url);
 		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, null, String.class);
 		String json = response.getBody();
 		System.out.println(json);
-		System.out.println("complete");
+		JsonNode root = objectMapper.readTree(json);
+		JsonNode dataNode = root.get("Data");
+		JsonNode rideid = dataNode.get("rideid");
+		long riderid = rideid.asLong();
+		JsonNode fare = dataNode.get("fare");
+		double fareprice = fare.asDouble();
+		Rider rider = riderRepository.findById((int) riderid).orElseThrow(() -> new RideNotFoundExecption());
+		System.out.println(rideid);
+		rider.setNoofrides(rider.getNoofrides() + 1);
+		double platformfee = (fareprice / 100) * 10;
+		System.out.println(platformfee);
+		double wallet = rider.getWallet() - platformfee;
+		rider.setWallet(wallet);
+		if (rider.getWallet() <= -1000) {
+			rider.setStatus("Blocked");
+		} else {
+			rider.setStatus("Available");
+		}
+		riderRepository.save(rider);
+		Responsestructure<String> responsestructure = new Responsestructure<String>();
+		responsestructure.setStatuscode(HttpStatus.ACCEPTED.value());
+		responsestructure.setData("Ride completed");
+		responsestructure.setMessage("Ride Complete successfully");
+		return responsestructure;
 	}
 
-	
-	
+	public List<RiderHistoryDTO> riderHistory(int riderid, String status) {
+		// TODO Auto-generated method stub
+		Rider ride = riderRepository.findById(riderid).orElseThrow(() -> new RiderNotFoundException());
+		String url = "http://localhost:8081/customer/riderhistory/Bybooking?" + "riderid=" + riderid + "&status="+ status;
+		ResponseEntity<List<RiderHistoryDTO>> response = restTemplate.exchange(url, HttpMethod.GET, null,new ParameterizedTypeReference<List<RiderHistoryDTO>>() {});
+		return response.getBody();
+	}
+
 }
